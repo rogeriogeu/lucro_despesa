@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require 'app.php';
 require_login();
 $pdo = db();
