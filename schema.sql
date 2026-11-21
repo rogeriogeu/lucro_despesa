@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS lancamentos (
   tipo ENUM('receita','despesa') NOT NULL,
   descricao VARCHAR(150) NOT NULL,
   valor DECIMAL(12,2) NOT NULL,
+  valor_pago DECIMAL(12,2) NOT NULL DEFAULT 0,
   data DATE NOT NULL,
   criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_data (data),

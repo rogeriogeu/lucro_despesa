@@ -12,25 +12,27 @@ $fmt = ['diario' => '%Y-%m-%d', 'mensal' => '%Y-%m', 'anual' => '%Y'];
 $dados = [];
 foreach ($desde as $p => $ini) {
     $barras = $pdo->query("SELECT DATE_FORMAT(data,'{$fmt[$p]}') AS chave,
-        COALESCE(SUM(CASE WHEN tipo='receita' THEN valor END),0) AS receita,
-        COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor END),0) AS despesa
+        COALESCE(SUM(CASE WHEN tipo='receita' THEN valor_pago END),0) AS receita,
+        COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor_pago END),0) AS despesa
         FROM lancamentos WHERE data >= $ini GROUP BY chave ORDER BY chave")->fetchAll();
     $pizza = ['receita' => [], 'despesa' => []];
-    foreach ($pdo->query("SELECT l.tipo, COALESCE(g.nome,'Sem categoria') AS categoria, SUM(l.valor) AS total
+    foreach ($pdo->query("SELECT l.tipo, COALESCE(g.nome,'Sem categoria') AS categoria, SUM(l.valor_pago) AS total
         FROM lancamentos l LEFT JOIN categorias g ON g.id=l.categoria_id
         WHERE l.data >= $ini GROUP BY l.tipo, categoria ORDER BY total DESC") as $r) {
         $pizza[$r['tipo']][] = ['nome' => $r['categoria'], 'total' => (float)$r['total']];
     }
     $dados[$p] = ['barras' => $barras, 'pizza' => $pizza];
 }
-$tot = $pdo->query("SELECT COALESCE(SUM(CASE WHEN tipo='receita' THEN valor END),0) AS r, COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor END),0) AS d FROM lancamentos")->fetch();
+$tot = $pdo->query("SELECT COALESCE(SUM(CASE WHEN tipo='receita' THEN valor_pago END),0) AS r, COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor_pago END),0) AS d FROM lancamentos")->fetch();
 $inicial = (float)$pdo->query('SELECT COALESCE(SUM(saldo_inicial),0) FROM contas')->fetchColumn();
-$mes = $pdo->query("SELECT COALESCE(SUM(CASE WHEN tipo='receita' THEN valor END),0) AS r, COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor END),0) AS d FROM lancamentos WHERE DATE_FORMAT(data,'%Y-%m')=DATE_FORMAT(CURDATE(),'%Y-%m')")->fetch();
+$mes = $pdo->query("SELECT COALESCE(SUM(CASE WHEN tipo='receita' THEN valor_pago END),0) AS r, COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor_pago END),0) AS d FROM lancamentos WHERE DATE_FORMAT(data,'%Y-%m')=DATE_FORMAT(CURDATE(),'%Y-%m')")->fetch();
+
+$pend = $pdo->query("SELECT COALESCE(SUM(CASE WHEN tipo='receita' THEN valor-valor_pago END),0) AS r, COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor-valor_pago END),0) AS d FROM lancamentos")->fetch();
 
 page_header('Dashboard');
 echo '<h4 class="mb-3">Dashboard</h4><div class="row g-3 mb-4">';
-foreach ([['Receitas (total)', $tot['r'], 'success'], ['Despesas (total)', $tot['d'], 'danger'], ['Resultado do mês', $mes['r'] - $mes['d'], $mes['r'] - $mes['d'] >= 0 ? 'success' : 'danger'], ['Saldo das contas', $inicial + $tot['r'] - $tot['d'], 'dark']] as [$t, $v, $c]) {
-    echo '<div class="col-6 col-md-3"><div class="card h-100"><div class="card-body"><div class="text-muted">' . $t . '</div><div class="fs-4 fw-bold text-nowrap text-' . $c . '">' . brl($v) . '</div></div></div></div>';
+foreach ([['Receitas (total)', $tot['r'], 'success'], ['Despesas (total)', $tot['d'], 'danger'], ['Resultado do mês', $mes['r'] - $mes['d'], $mes['r'] - $mes['d'] >= 0 ? 'success' : 'danger'], ['Saldo das contas', $inicial + $tot['r'] - $tot['d'], 'dark'], ['A receber (restante)', $pend['r'], 'success'], ['A pagar (restante)', $pend['d'], 'danger']] as [$t, $v, $c]) {
+    echo '<div class="col-6 col-md-3' . (strpos($t, 'restante') ? ' col-lg-3' : '') . '"><div class="card h-100"><div class="card-body"><div class="text-muted">' . $t . '</div><div class="fs-4 fw-bold text-nowrap text-' . $c . '">' . brl($v) . '</div></div></div></div>';
 }
 echo '</div>';
 ?>

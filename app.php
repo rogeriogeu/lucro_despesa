@@ -71,7 +71,7 @@ function head_comum(string $title): string {
 function page_header(string $title): void {
     $u = user();
     $cur = basename($_SERVER['SCRIPT_NAME']);
-    $menu = ['index.php' => 'Dashboard', 'lancamentos.php' => 'Receitas e Despesas', 'contas.php' => 'Contas', 'categorias.php' => 'Categorias'];
+    $menu = ['index.php' => 'Dashboard', 'lancamentos.php' => 'Receitas e Despesas', 'pagamentos.php' => 'Pagamentos', 'contas.php' => 'Contas', 'categorias.php' => 'Categorias'];
     echo '<!doctype html><html lang="pt-BR"><head>' . head_comum($title) . '</head><body class="bg-light">';
     echo '<nav class="navbar navbar-expand-lg navbar-dark" style="background:#d32f2f"><div class="container">';
     echo '<a class="navbar-brand d-flex align-items-center gap-2" href="index.php"><img src="favicon.svg" width="28" height="28" alt=""> ' . APP_NOME . '</a>';

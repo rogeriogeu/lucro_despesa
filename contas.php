@@ -38,7 +38,7 @@ echo '</select></div>';
 echo '<div class="col-md-2"><label class="form-label">Saldo inicial (R$)</label><input class="form-control" name="saldo_inicial" value="' . h(isset($edit) ? number_format($edit['saldo_inicial'], 2, ',', '') : '0,00') . '"></div>';
 echo '<div class="col-md-3 d-flex align-items-end gap-2"><button class="btn btn-primary">' . ($edit ? 'Atualizar' : 'Cadastrar') . '</button>' . ($edit ? '<a class="btn btn-secondary" href="contas.php">Cancelar</a>' : '') . '</div></form></div></div>';
 echo '<div class="card"><div class="card-body"><table class="table table-striped dt w-100"><thead><tr><th>ID</th><th>Conta</th><th>Tipo</th><th>Receitas</th><th>Despesas</th><th>Saldo</th><th>Ações</th></tr></thead><tbody>';
-$sql = "SELECT c.*, COALESCE(SUM(CASE WHEN l.tipo='receita' THEN l.valor END),0) AS rec, COALESCE(SUM(CASE WHEN l.tipo='despesa' THEN l.valor END),0) AS des FROM contas c LEFT JOIN lancamentos l ON l.conta_id=c.id GROUP BY c.id ORDER BY c.nome";
+$sql = "SELECT c.*, COALESCE(SUM(CASE WHEN l.tipo='receita' THEN l.valor_pago END),0) AS rec, COALESCE(SUM(CASE WHEN l.tipo='despesa' THEN l.valor_pago END),0) AS des FROM contas c LEFT JOIN lancamentos l ON l.conta_id=c.id GROUP BY c.id ORDER BY c.nome";
 foreach ($pdo->query($sql) as $r) {
     $saldo = $r['saldo_inicial'] + $r['rec'] - $r['des'];
     echo '<tr><td>' . $r['id'] . '</td><td>' . h($r['nome']) . '</td><td>' . $tipos[$r['tipo']] . '</td><td class="text-success">' . brl($r['rec']) . '</td><td class="text-danger">' . brl($r['des']) . '</td><td class="fw-bold">' . brl($saldo) . '</td>'
