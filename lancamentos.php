@@ -74,7 +74,7 @@ echo '<input type="hidden" name="id" value="' . h($edit['id'] ?? 0) . '">';
 echo '<div class="col-md-2"><label class="form-label">Tipo</label><select class="form-select" name="tipo" id="tipo"><option value="receita"' . ($tipoAtual === 'receita' ? ' selected' : '') . '>Receita</option><option value="despesa"' . ($tipoAtual === 'despesa' ? ' selected' : '') . '>Despesa</option></select></div>';
 echo '<div class="col-md-4"><label class="form-label">Descrição</label><input class="form-control" name="descricao" value="' . h($edit['descricao'] ?? '') . '"></div>';
 echo '<div class="col-md-3"><label class="form-label">Conta</label><select class="form-select" name="conta_id" id="conta" required>';
-foreach ($contas as $c) echo '<option value="' . $c['id'] . '" data-tipo="' . $c['tipo'] . '"' . (($edit['conta_id'] ?? 0) == $c['id'] ? ' selected' : '') . '>' . h($c['nome']) . '</option>';
+foreach ($contas as $c) echo '<option value="' . $c['id'] . '" data-tipo="' . $c['tipo'] . '"' . (($edit['conta_id'] ?? ($c['nome'] === 'Salário' ? $c['id'] : 0)) == $c['id'] ? ' selected' : '') . '>' . h($c['nome']) . '</option>';
 echo '</select></div>';
 echo '<div class="col-md-3"><label class="form-label">Categoria</label><select class="form-select" name="categoria_id" id="cat"><option value="">Sem categoria</option>';
 foreach ($cats as $c) echo '<option value="' . $c['id'] . '" data-tipo="' . $c['tipo'] . '"' . (($edit['categoria_id'] ?? 0) == $c['id'] ? ' selected' : '') . '>' . h($c['nome']) . '</option>';

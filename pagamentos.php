@@ -14,6 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $st->execute([$id]);
     $l = $st->fetch();
     if (!$l) { flash('Lançamento não encontrado.', 'warning'); redirect('pagamentos.php' . $voltar); }
+    if (($_POST['acao'] ?? '') === 'estornar') {
+        $pdo->prepare('UPDATE lancamentos SET valor_pago=0 WHERE id=?')->execute([$id]);
+        flash('Pagamento estornado: ' . brl($l['valor_pago']) . ' voltou para a conta.');
+        redirect('pagamentos.php' . $voltar);
+    }
     $resta = round($l['valor'] - $l['valor_pago'], 2);
     $pg = ($_POST['modo'] ?? '') === 'total' ? $resta : num($_POST['pagamento'] ?? 0);
     if ($pg <= 0) flash('Informe um valor válido.', 'warning');
@@ -52,6 +57,7 @@ foreach ($rows as $r) {
     $resta = round($r['valor'] - $r['valor_pago'], 2);
     $badge = $resta <= 0 ? '<span class="badge text-bg-success">Quitado</span>' : ($r['valor_pago'] > 0 ? '<span class="badge text-bg-warning">Parcial</span>' : '<span class="badge text-bg-secondary">Pendente</span>');
     $btn = $resta > 0 ? '<button type="button" class="btn btn-sm btn-danger btn-pagar" data-id="' . $r['id'] . '" data-resta="' . $resta . '" data-resta-fmt="' . h(brl($resta)) . '" data-desc="' . h($r['descricao']) . '" data-rec="' . (int)$rec . '">' . ($rec ? 'Receber' : 'Pagar') . '</button>' : '';
+    if ($r['valor_pago'] > 0) $btn .= ' <form method="post" class="d-inline" data-confirm="Estornar ' . h(brl($r['valor_pago'])) . '? O valor volta para a conta e o lançamento fica pendente.">' . csrf_field() . '<input type="hidden" name="acao" value="estornar"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="sit" value="' . h($sit) . '"><input type="hidden" name="ftipo" value="' . h($ft) . '"><button class="btn btn-sm btn-outline-secondary">Estornar</button></form>';
     echo '<tr><td data-order="' . h($r['data']) . '">' . date('d/m/Y', strtotime($r['data'])) . '</td>'
         . '<td><span class="badge text-bg-' . ($rec ? 'success' : 'danger') . '">' . ($rec ? 'Receita' : 'Despesa') . '</span></td>'
         . '<td>' . h($r['descricao']) . '</td><td>' . h($r['conta']) . '</td>'

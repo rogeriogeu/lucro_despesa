@@ -19,6 +19,18 @@ function db(): PDO {
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]);
+        $pdo->exec('CREATE TABLE IF NOT EXISTS transferencias (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            origem_id INT NOT NULL,
+            destino_id INT NOT NULL,
+            valor DECIMAL(12,2) NOT NULL,
+            descricao VARCHAR(150) NULL,
+            data DATE NOT NULL,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (origem_id) REFERENCES contas(id),
+            FOREIGN KEY (destino_id) REFERENCES contas(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
+        if (!$pdo->query('SELECT 1 FROM contas LIMIT 1')->fetchColumn()) $pdo->exec("INSERT INTO contas (nome,tipo,saldo_inicial) VALUES ('Salário','ambas',0)");
     }
     return $pdo;
 }
@@ -76,7 +88,7 @@ function head_comum(string $title): string {
 function page_header(string $title): void {
     $u = user();
     $cur = basename($_SERVER['SCRIPT_NAME']);
-    $menu = ['index.php' => 'Dashboard', 'lancamentos.php' => 'Receitas e Despesas', 'pagamentos.php' => 'Pagamentos', 'contas.php' => 'Contas', 'categorias.php' => 'Categorias'];
+    $menu = ['index.php' => 'Dashboard', 'lancamentos.php' => 'Receitas e Despesas', 'pagamentos.php' => 'Pagamentos', 'transferencias.php' => 'Transferências', 'contas.php' => 'Contas', 'categorias.php' => 'Categorias'];
     echo '<!doctype html><html lang="pt-BR"><head>' . head_comum($title) . '</head><body class="bg-light">';
     echo '<nav class="navbar navbar-expand-lg navbar-dark" style="background:#d32f2f"><div class="container">';
     echo '<a class="navbar-brand d-flex align-items-center gap-2" href="index.php"><img src="favicon.svg" width="28" height="28" alt=""> ' . APP_NOME . '</a>';
