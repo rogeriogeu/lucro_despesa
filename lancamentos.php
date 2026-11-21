@@ -71,8 +71,21 @@ echo '<div class="col-12"><button class="btn btn-primary">' . ($edit ? 'Atualiza
 if ($edit) echo '<a class="btn btn-secondary" href="lancamentos.php">Cancelar</a>';
 echo '</div></form></div></div>';
 
+$fc = (int)($_GET['fconta'] ?? 0);
+$ft = in_array($_GET['ftipo'] ?? '', ['receita', 'despesa'], true) ? $_GET['ftipo'] : '';
+echo '<div class="card mb-3"><div class="card-body"><form method="get" class="row g-2 align-items-end"><div class="col-md-4"><label class="form-label">Filtrar por conta</label><select class="form-select" name="fconta"><option value="">Todas as contas</option>';
+foreach ($contas as $c) echo '<option value="' . $c['id'] . '"' . ($fc == $c['id'] ? ' selected' : '') . '>' . h($c['nome']) . '</option>';
+echo '</select></div><div class="col-md-3"><label class="form-label">Tipo</label><select class="form-select" name="ftipo"><option value="">Receitas e despesas</option><option value="receita"' . ($ft === 'receita' ? ' selected' : '') . '>Receitas</option><option value="despesa"' . ($ft === 'despesa' ? ' selected' : '') . '>Despesas</option></select></div>';
+echo '<div class="col-md-5"><button class="btn btn-primary">Filtrar</button> ' . ($fc || $ft ? '<a class="btn btn-secondary" href="lancamentos.php">Limpar</a>' : '') . '</div></form></div></div>';
+
 echo '<div class="card"><div class="card-body"><table class="table table-striped dt w-100"><thead><tr><th>ID</th><th>Data</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Conta</th><th>Valor</th><th>Ações</th></tr></thead><tbody>';
-foreach ($pdo->query('SELECT l.*, c.nome AS conta, g.nome AS categoria FROM lancamentos l JOIN contas c ON c.id=l.conta_id LEFT JOIN categorias g ON g.id=l.categoria_id ORDER BY l.data DESC, l.id DESC') as $r) {
+$where = [];
+$args = [];
+if ($fc) { $where[] = 'l.conta_id=?'; $args[] = $fc; }
+if ($ft) { $where[] = 'l.tipo=?'; $args[] = $ft; }
+$st = $pdo->prepare('SELECT l.*, c.nome AS conta, g.nome AS categoria FROM lancamentos l JOIN contas c ON c.id=l.conta_id LEFT JOIN categorias g ON g.id=l.categoria_id' . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY l.data DESC, l.id DESC');
+$st->execute($args);
+foreach ($st as $r) {
     $rec = $r['tipo'] === 'receita';
     echo '<tr><td>' . $r['id'] . '</td><td data-order="' . h($r['data']) . '">' . date('d/m/Y', strtotime($r['data'])) . '</td>'
         . '<td><span class="badge text-bg-' . ($rec ? 'success' : 'danger') . '">' . ($rec ? 'Receita' : 'Despesa') . '</span></td>'
