@@ -12,11 +12,11 @@ $fmt = ['diario' => '%Y-%m-%d', 'mensal' => '%Y-%m', 'anual' => '%Y'];
 $dados = [];
 foreach ($desde as $p => $ini) {
     $barras = $pdo->query("SELECT DATE_FORMAT(data,'{$fmt[$p]}') AS chave,
-        COALESCE(SUM(CASE WHEN tipo='receita' THEN valor_pago END),0) AS receita,
-        COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor_pago END),0) AS despesa
+        COALESCE(SUM(CASE WHEN tipo='receita' THEN valor END),0) AS receita,
+        COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor END),0) AS despesa
         FROM lancamentos WHERE data >= $ini GROUP BY chave ORDER BY chave")->fetchAll();
     $pizza = ['receita' => [], 'despesa' => []];
-    foreach ($pdo->query("SELECT l.tipo, COALESCE(g.nome,'Sem categoria') AS categoria, SUM(l.valor_pago) AS total
+    foreach ($pdo->query("SELECT l.tipo, COALESCE(g.nome,'Sem categoria') AS categoria, SUM(l.valor) AS total
         FROM lancamentos l LEFT JOIN categorias g ON g.id=l.categoria_id
         WHERE l.data >= $ini GROUP BY l.tipo, categoria ORDER BY total DESC") as $r) {
         $pizza[$r['tipo']][] = ['nome' => $r['categoria'], 'total' => (float)$r['total']];
