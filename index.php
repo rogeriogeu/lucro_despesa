@@ -42,7 +42,7 @@ echo '</div>';
 <div class="col-md-6"><div class="card h-100"><div class="card-body"><h6>Receitas por categoria</h6><div style="height:300px"><canvas id="pizzaR"></canvas></div><p class="text-muted text-center mt-2 d-none" id="vazioR">Sem receitas no período.</p></div></div></div>
 <div class="col-md-6"><div class="card h-100"><div class="card-body"><h6>Despesas por categoria</h6><div style="height:300px"><canvas id="pizzaD"></canvas></div><p class="text-muted text-center mt-2 d-none" id="vazioD">Sem despesas no período.</p></div></div></div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
 var D=<?= json_encode($dados) ?>,g={};

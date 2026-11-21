@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require 'app.php';
 require_login();
 $pdo = db();
@@ -12,13 +12,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $nome = trim($_POST['nome'] ?? '');
     $tipo = $_POST['tipo'] ?? '';
-    if ($nome === '' || !in_array($tipo, ['receita', 'despesa'], true)) { flash('Dados inválidos.', 'danger'); redirect('categorias.php'); }
+    if ($nome === '' || !in_array($tipo, ['receita', 'despesa'], true)) { flash('Dados inválidos.', 'warning'); redirect('categorias.php'); }
     try {
         if ($id) $pdo->prepare('UPDATE categorias SET nome=?,tipo=? WHERE id=?')->execute([$nome, $tipo, $id]);
         else $pdo->prepare('INSERT INTO categorias (nome,tipo) VALUES (?,?)')->execute([$nome, $tipo]);
         flash('Categoria salva.');
     } catch (PDOException $e) {
-        flash('Essa categoria já existe.', 'danger');
+        flash('Essa categoria já existe.', 'warning');
     }
     redirect('categorias.php');
 }

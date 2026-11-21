@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require 'app.php';
 require_login();
 $pdo = db();
@@ -17,7 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conta = (int)($_POST['conta_id'] ?? 0);
     $cat = (int)($_POST['categoria_id'] ?? 0) ?: null;
     if (!in_array($tipo, ['receita', 'despesa'], true) || $desc === '' || $valor <= 0 || !$conta || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data)) {
-        flash('Dados inválidos.', 'danger');
+        flash('Dados inválidos.', 'warning');
+        redirect('lancamentos.php' . ($id ? '?editar=' . $id : ''));
+    }
+    $st = $pdo->prepare("SELECT COUNT(*) FROM contas WHERE id=? AND tipo IN ('ambas',?)");
+    $st->execute([$conta, $tipo]);
+    if (!$st->fetchColumn()) {
+        flash('Esta conta não aceita lançamentos deste tipo.', 'warning');
         redirect('lancamentos.php' . ($id ? '?editar=' . $id : ''));
     }
     if ($cat) {
@@ -43,7 +49,7 @@ if (isset($_GET['editar'])) {
     $st->execute([(int)$_GET['editar']]);
     $edit = $st->fetch() ?: null;
 }
-$contas = $pdo->query('SELECT id,nome FROM contas ORDER BY nome')->fetchAll();
+$contas = $pdo->query('SELECT id,nome,tipo FROM contas ORDER BY nome')->fetchAll();
 $cats = $pdo->query('SELECT id,nome,tipo FROM categorias ORDER BY nome')->fetchAll();
 $tipoAtual = $edit['tipo'] ?? 'despesa';
 
@@ -53,8 +59,8 @@ echo '<div class="card mb-4"><div class="card-body"><form method="post" class="r
 echo '<input type="hidden" name="id" value="' . h($edit['id'] ?? 0) . '">';
 echo '<div class="col-md-2"><label class="form-label">Tipo</label><select class="form-select" name="tipo" id="tipo"><option value="receita"' . ($tipoAtual === 'receita' ? ' selected' : '') . '>Receita</option><option value="despesa"' . ($tipoAtual === 'despesa' ? ' selected' : '') . '>Despesa</option></select></div>';
 echo '<div class="col-md-4"><label class="form-label">Descrição</label><input class="form-control" name="descricao" required value="' . h($edit['descricao'] ?? '') . '"></div>';
-echo '<div class="col-md-3"><label class="form-label">Conta</label><select class="form-select" name="conta_id" required>';
-foreach ($contas as $c) echo '<option value="' . $c['id'] . '"' . (($edit['conta_id'] ?? 0) == $c['id'] ? ' selected' : '') . '>' . h($c['nome']) . '</option>';
+echo '<div class="col-md-3"><label class="form-label">Conta</label><select class="form-select" name="conta_id" id="conta" required>';
+foreach ($contas as $c) echo '<option value="' . $c['id'] . '" data-tipo="' . $c['tipo'] . '"' . (($edit['conta_id'] ?? 0) == $c['id'] ? ' selected' : '') . '>' . h($c['nome']) . '</option>';
 echo '</select></div>';
 echo '<div class="col-md-3"><label class="form-label">Categoria</label><select class="form-select" name="categoria_id" id="cat"><option value="">Sem categoria</option>';
 foreach ($cats as $c) echo '<option value="' . $c['id'] . '" data-tipo="' . $c['tipo'] . '"' . (($edit['categoria_id'] ?? 0) == $c['id'] ? ' selected' : '') . '>' . h($c['nome']) . '</option>';
@@ -77,5 +83,7 @@ foreach ($pdo->query('SELECT l.*, c.nome AS conta, g.nome AS categoria FROM lanc
 echo '</tbody></table></div></div>';
 echo '<script>document.addEventListener("DOMContentLoaded",function(){var t=document.getElementById("tipo"),c=document.getElementById("cat");
 function f(){Array.prototype.forEach.call(c.options,function(o){if(!o.dataset.tipo)return;var ok=o.dataset.tipo===t.value;o.hidden=!ok;o.disabled=!ok;});if(c.selectedOptions[0]&&c.selectedOptions[0].disabled)c.value="";}
-t.addEventListener("change",f);f();});</script>';
+var k=document.getElementById("conta");
+function fc(){Array.prototype.forEach.call(k.options,function(o){var ok=o.dataset.tipo==="ambas"||o.dataset.tipo===t.value;o.hidden=!ok;o.disabled=!ok;});if(k.selectedOptions[0]&&k.selectedOptions[0].disabled){for(var i=0;i<k.options.length;i++)if(!k.options[i].disabled){k.selectedIndex=i;break;}}}
+t.addEventListener("change",function(){f();fc();});f();fc();});</script>';
 page_footer();
