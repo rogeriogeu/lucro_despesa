@@ -64,7 +64,7 @@ function head_comum(string $title): string {
 .page-item.active .page-link{background:#c62828;border-color:#c62828}.dropdown-item.active,.dropdown-item:active{background:#c62828}
 .alertify .ajs-dialog{border-top:4px solid #c62828;border-radius:.5rem;overflow:hidden}.alertify .ajs-header{background:#d32f2f;color:#fff;font-weight:600;border-bottom:0}
 .alertify .ajs-footer .ajs-buttons .ajs-button.ajs-ok{background:#c62828;border-color:#c62828;color:#fff}.alertify .ajs-footer .ajs-buttons .ajs-button.ajs-cancel{background:#fff;border:1px solid #c62828;color:#c62828}
-.alertify-notifier .ajs-message.ajs-success,.alertify-notifier .ajs-message{background:rgba(13,110,253,.95);color:#fff}.alertify-notifier .ajs-message.ajs-error{background:rgba(198,40,40,.95);color:#fff}.alertify-notifier .ajs-message.ajs-warning{background:rgba(255,193,7,.97);color:#212529}
+.alertify-notifier .ajs-message.ajs-success,.alertify-notifier .ajs-message{background:rgba(255,193,7,.97);color:#212529}.alertify-notifier .ajs-message.ajs-error{background:rgba(198,40,40,.95);color:#fff}.alertify-notifier .ajs-message.ajs-warning{background:rgba(255,193,7,.97);color:#212529}
 .card-body{overflow-x:auto}.dataTables_wrapper{max-width:100%}table.dt{width:100%!important}table.dt td,table.dt th{white-space:nowrap}</style>';
 }
 

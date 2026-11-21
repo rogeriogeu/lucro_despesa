@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $st->execute([$cat, $tipo]);
         if (!$st->fetchColumn()) $cat = null;
     }
-    $pago = trim($_POST['valor_pago'] ?? '') === '' ? $valor : max(0, min($valor, num($_POST['valor_pago'])));
+    $pago = trim($_POST['valor_pago'] ?? '') === '' ? 0 : max(0, min($valor, num($_POST['valor_pago'])));
     $vals = [$conta, $cat, $tipo, $desc, $valor, $pago, $data];
     if ($id) {
         $vals[] = $id;
@@ -80,7 +80,7 @@ echo '<div class="col-md-3"><label class="form-label">Categoria</label><select c
 foreach ($cats as $c) echo '<option value="' . $c['id'] . '" data-tipo="' . $c['tipo'] . '"' . (($edit['categoria_id'] ?? 0) == $c['id'] ? ' selected' : '') . '>' . h($c['nome']) . '</option>';
 echo '</select></div>';
 echo '<div class="col-md-3"><label class="form-label">Valor (R$)</label><input class="form-control" name="valor" required value="' . h(isset($edit) ? number_format($edit['valor'], 2, ',', '') : '') . '"></div>';
-echo '<div class="col-md-3"><label class="form-label">Valor pago (R$)</label><input class="form-control" name="valor_pago" placeholder="Em branco = valor total" value="' . h(isset($edit) ? number_format($edit['valor_pago'], 2, ',', '') : '') . '"></div>';
+echo '<div class="col-md-3"><label class="form-label">Valor pago (R$)</label><input class="form-control" name="valor_pago" placeholder="Em branco = pendente" value="' . h(isset($edit) ? number_format($edit['valor_pago'], 2, ',', '') : '') . '"></div>';
 echo '<div class="col-md-3"><label class="form-label">Data</label><input type="date" class="form-control" name="data" required value="' . h($edit['data'] ?? date('Y-m-d')) . '"></div>';
 echo '<div class="col-12"><button class="btn btn-primary">' . ($edit ? 'Atualizar' : 'Cadastrar') . '</button> ';
 if ($edit) echo '<a class="btn btn-secondary" href="lancamentos.php">Cancelar</a>';
