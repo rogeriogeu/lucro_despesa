@@ -24,12 +24,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('lancamentos.php' . ($_POST['voltar'] ?? ''));
     }
     $tipo = $_POST['tipo'] ?? '';
-    $desc = trim($_POST['descricao'] ?? '');
+    $desc = trim($_POST['descricao'] ?? '') ?: null;
     $valor = num($_POST['valor'] ?? 0);
     $data = $_POST['data'] ?? '';
     $conta = (int)($_POST['conta_id'] ?? 0);
     $cat = (int)($_POST['categoria_id'] ?? 0) ?: null;
-    if (!in_array($tipo, ['receita', 'despesa'], true) || $desc === '' || $valor <= 0 || !$conta || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data)) {
+    if (!in_array($tipo, ['receita', 'despesa'], true) || $valor <= 0 || !$conta || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data)) {
         flash('Dados inválidos.', 'warning');
         redirect('lancamentos.php' . ($id ? '?editar=' . $id : ''));
     }
@@ -72,7 +72,7 @@ if (!$contas) echo '<div class="alert alert-warning">Cadastre uma <a href="conta
 echo '<div class="card mb-4"><div class="card-body"><form method="post" class="row g-2" id="fl">' . csrf_field();
 echo '<input type="hidden" name="id" value="' . h($edit['id'] ?? 0) . '">';
 echo '<div class="col-md-2"><label class="form-label">Tipo</label><select class="form-select" name="tipo" id="tipo"><option value="receita"' . ($tipoAtual === 'receita' ? ' selected' : '') . '>Receita</option><option value="despesa"' . ($tipoAtual === 'despesa' ? ' selected' : '') . '>Despesa</option></select></div>';
-echo '<div class="col-md-4"><label class="form-label">Descrição</label><input class="form-control" name="descricao" required value="' . h($edit['descricao'] ?? '') . '"></div>';
+echo '<div class="col-md-4"><label class="form-label">Descrição</label><input class="form-control" name="descricao" value="' . h($edit['descricao'] ?? '') . '"></div>';
 echo '<div class="col-md-3"><label class="form-label">Conta</label><select class="form-select" name="conta_id" id="conta" required>';
 foreach ($contas as $c) echo '<option value="' . $c['id'] . '" data-tipo="' . $c['tipo'] . '"' . (($edit['conta_id'] ?? 0) == $c['id'] ? ' selected' : '') . '>' . h($c['nome']) . '</option>';
 echo '</select></div>';
@@ -104,7 +104,7 @@ foreach ($st as $r) {
     $rec = $r['tipo'] === 'receita';
     $resta = round($r['valor'] - $r['valor_pago'], 2);
     $badge = $resta <= 0 ? '<span class="badge text-bg-success">Pago</span>' : ($r['valor_pago'] > 0 ? '<span class="badge text-bg-warning">Parcial</span>' : '<span class="badge text-bg-secondary">Pendente</span>');
-    $acao = $resta > 0 ? '<button type="button" class="btn btn-sm btn-success btn-pagar" data-id="' . $r['id'] . '" data-resta="' . $resta . '" data-resta-fmt="' . h(brl($resta)) . '">' . ($rec ? 'Receber' : 'Pagar') . '</button> ' : '';
+    $acao = $resta > 0 ? '<button type="button" class="btn btn-sm btn-danger btn-pagar" data-id="' . $r['id'] . '" data-resta="' . $resta . '" data-resta-fmt="' . h(brl($resta)) . '">' . ($rec ? 'Receber' : 'Pagar') . '</button> ' : '';
     echo '<tr><td>' . $r['id'] . '</td><td data-order="' . h($r['data']) . '">' . date('d/m/Y', strtotime($r['data'])) . '</td>'
         . '<td><span class="badge text-bg-' . ($rec ? 'success' : 'danger') . '">' . ($rec ? 'Receita' : 'Despesa') . '</span></td>'
         . '<td>' . h($r['descricao']) . '</td><td>' . h($r['categoria']) . '</td><td>' . h($r['conta']) . '</td>'

@@ -51,7 +51,7 @@ foreach ($rows as $r) {
     $rec = $r['tipo'] === 'receita';
     $resta = round($r['valor'] - $r['valor_pago'], 2);
     $badge = $resta <= 0 ? '<span class="badge text-bg-success">Quitado</span>' : ($r['valor_pago'] > 0 ? '<span class="badge text-bg-warning">Parcial</span>' : '<span class="badge text-bg-secondary">Pendente</span>');
-    $btn = $resta > 0 ? '<button type="button" class="btn btn-sm btn-success btn-pagar" data-id="' . $r['id'] . '" data-resta="' . $resta . '" data-resta-fmt="' . h(brl($resta)) . '" data-desc="' . h($r['descricao']) . '" data-rec="' . (int)$rec . '">' . ($rec ? 'Receber' : 'Pagar') . '</button>' : '';
+    $btn = $resta > 0 ? '<button type="button" class="btn btn-sm btn-danger btn-pagar" data-id="' . $r['id'] . '" data-resta="' . $resta . '" data-resta-fmt="' . h(brl($resta)) . '" data-desc="' . h($r['descricao']) . '" data-rec="' . (int)$rec . '">' . ($rec ? 'Receber' : 'Pagar') . '</button>' : '';
     echo '<tr><td data-order="' . h($r['data']) . '">' . date('d/m/Y', strtotime($r['data'])) . '</td>'
         . '<td><span class="badge text-bg-' . ($rec ? 'success' : 'danger') . '">' . ($rec ? 'Receita' : 'Despesa') . '</span></td>'
         . '<td>' . h($r['descricao']) . '</td><td>' . h($r['conta']) . '</td>'

@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS lancamentos (
   conta_id INT NOT NULL,
   categoria_id INT NULL,
   tipo ENUM('receita','despesa') NOT NULL,
-  descricao VARCHAR(150) NOT NULL,
+  descricao VARCHAR(150) NULL,
   valor DECIMAL(12,2) NOT NULL,
   valor_pago DECIMAL(12,2) NOT NULL DEFAULT 0,
   data DATE NOT NULL,
