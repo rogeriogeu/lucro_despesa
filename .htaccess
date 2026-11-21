@@ -1,0 +1,3 @@
+# Impede que o .htaccess da raiz (CodeIgniter/balls) redirecione esta pasta.
+RewriteEngine Off
+DirectoryIndex index.php
