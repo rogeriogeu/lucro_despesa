@@ -1,4 +1,4 @@
-# Lucro & Despesa
+# Despesas e Receitas
 
 Controle simples de receitas e despesas (PHP + MySQL + Bootstrap).
 
@@ -12,3 +12,6 @@ Controle simples de receitas e despesas (PHP + MySQL + Bootstrap).
 3. Entre em `http://localhost/lucro_despesa/` com `admin@lucro.local` / `admin123` e troque a senha.
 
 Ajuste usuário/senha do MySQL em `app.php` se necessário.
+
+## PWA
+O app pode ser instalado (manifest + service worker). Sessão de login persistente: só pede senha de novo após clicar em Sair.

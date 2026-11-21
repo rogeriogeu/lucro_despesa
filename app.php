@@ -1,11 +1,16 @@
 <?php
+$sessDir = __DIR__ . '/sessions';
+if (!is_dir($sessDir)) @mkdir($sessDir, 0700, true);
+session_save_path($sessDir);
+ini_set('session.gc_maxlifetime', '315360000');
+session_set_cookie_params(['lifetime' => 315360000, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
 session_start();
 
 const DB_HOST = '127.0.0.1';
 const DB_NAME = 'lucro_despesa';
 const DB_USER = 'root';
 const DB_PASS = '';
-const APP_NOME = 'Lucro & Despesa';
+const APP_NOME = 'Despesas e Receitas';
 
 function db(): PDO {
     static $pdo = null;
@@ -51,7 +56,7 @@ function require_login(): void { if (!user()) redirect('login.php'); check_csrf(
 
 function head_comum(string $title): string {
     return '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' . h($title) . ' - ' . APP_NOME . '</title>'
-        . '<link rel="icon" type="image/svg+xml" href="favicon.svg">'
+        . '<link rel="icon" type="image/svg+xml" href="favicon.svg"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#c62828"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><script>if("serviceWorker" in navigator)addEventListener("load",function(){navigator.serviceWorker.register("sw.js")})</script>'
         . '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">'
         . '<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">'
         . '<link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">'
