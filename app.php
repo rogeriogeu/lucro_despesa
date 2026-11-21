@@ -6,10 +6,11 @@ ini_set('session.gc_maxlifetime', '315360000');
 session_set_cookie_params(['lifetime' => 315360000, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax']);
 session_start();
 
-const DB_HOST = '127.0.0.1';
-const DB_NAME = 'lucro_despesa';
-const DB_USER = 'root';
-const DB_PASS = '';
+if (is_file(__DIR__ . '/config.php')) require __DIR__ . '/config.php';
+defined('DB_HOST') || define('DB_HOST', '127.0.0.1');
+defined('DB_NAME') || define('DB_NAME', 'lucro_despesa');
+defined('DB_USER') || define('DB_USER', 'root');
+defined('DB_PASS') || define('DB_PASS', '');
 const APP_NOME = 'Despesas e Receitas';
 
 function init_extras(PDO $pdo): void {
