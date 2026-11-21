@@ -12,6 +12,30 @@ const DB_USER = 'root';
 const DB_PASS = '';
 const APP_NOME = 'Despesas e Receitas';
 
+function init_extras(PDO $pdo): void {
+    try {
+        if ($pdo->query("SHOW TABLES LIKE 'transferencias'")->fetchColumn()) return;
+        $cols = 'id INT AUTO_INCREMENT PRIMARY KEY, origem_id INT NOT NULL, destino_id INT NOT NULL, valor DECIMAL(12,2) NOT NULL, descricao VARCHAR(150) NULL, data DATE NOT NULL, criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP';
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS transferencias ($cols, INDEX (origem_id), INDEX (destino_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        } catch (PDOException $e) {
+            error_log('transferencias: ' . $e->getMessage());
+        }
+        if (!$pdo->query('SELECT 1 FROM contas LIMIT 1')->fetchColumn()) $pdo->exec("INSERT INTO contas (nome,tipo,saldo_inicial) VALUES ('Salário','ambas',0)");
+    } catch (Throwable $e) {
+        error_log('init_extras: ' . $e->getMessage());
+    }
+}
+
+function transferencias_ok(): bool {
+    static $ok = null;
+    if ($ok === null) {
+        try { db()->query('SELECT 1 FROM transferencias LIMIT 1'); $ok = true; }
+        catch (Throwable $e) { error_log('transferencias: ' . $e->getMessage()); $ok = false; }
+    }
+    return $ok;
+}
+
 function db(): PDO {
     static $pdo = null;
     if (!$pdo) {
@@ -19,18 +43,7 @@ function db(): PDO {
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         ]);
-        $pdo->exec('CREATE TABLE IF NOT EXISTS transferencias (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            origem_id INT NOT NULL,
-            destino_id INT NOT NULL,
-            valor DECIMAL(12,2) NOT NULL,
-            descricao VARCHAR(150) NULL,
-            data DATE NOT NULL,
-            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (origem_id) REFERENCES contas(id),
-            FOREIGN KEY (destino_id) REFERENCES contas(id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4');
-        if (!$pdo->query('SELECT 1 FROM contas LIMIT 1')->fetchColumn()) $pdo->exec("INSERT INTO contas (nome,tipo,saldo_inicial) VALUES ('Salário','ambas',0)");
+        init_extras($pdo);
     }
     return $pdo;
 }

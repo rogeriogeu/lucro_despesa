@@ -34,4 +34,16 @@ CREATE TABLE IF NOT EXISTS lancamentos (
   INDEX idx_data (data),
   FOREIGN KEY (conta_id) REFERENCES contas(id),
   FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS transferencias (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  origem_id INT NOT NULL,
+  destino_id INT NOT NULL,
+  valor DECIMAL(12,2) NOT NULL,
+  descricao VARCHAR(150) NULL,
+  data DATE NOT NULL,
+  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX (origem_id),
+  INDEX (destino_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

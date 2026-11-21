@@ -8,8 +8,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (($_POST['acao'] ?? '') === 'excluir') {
         $st = $pdo->prepare('SELECT COUNT(*) FROM lancamentos WHERE conta_id=?');
         $st->execute([$id]);
-        $tr = $pdo->prepare('SELECT COUNT(*) FROM transferencias WHERE origem_id=? OR destino_id=?'); $tr->execute([$id, $id]);
-        if ($st->fetchColumn() || $tr->fetchColumn()) flash('Conta com lançamentos não pode ser excluída.', 'warning');
+        $temTr = 0;
+        if (transferencias_ok()) { $tr = $pdo->prepare('SELECT COUNT(*) FROM transferencias WHERE origem_id=? OR destino_id=?'); $tr->execute([$id, $id]); $temTr = $tr->fetchColumn(); }
+        if ($st->fetchColumn() || $temTr) flash('Conta com lançamentos não pode ser excluída.', 'warning');
         else { $pdo->prepare('DELETE FROM contas WHERE id=?')->execute([$id]); flash('Conta excluída.'); }
         redirect('contas.php');
     }
@@ -39,7 +40,8 @@ echo '</select></div>';
 echo '<div class="col-md-2"><label class="form-label">Saldo inicial (R$)</label><input class="form-control" name="saldo_inicial" value="' . h(isset($edit) ? number_format($edit['saldo_inicial'], 2, ',', '') : '0,00') . '"></div>';
 echo '<div class="col-md-3 d-flex align-items-end gap-2"><button class="btn btn-primary">' . ($edit ? 'Atualizar' : 'Cadastrar') . '</button>' . ($edit ? '<a class="btn btn-secondary" href="contas.php">Cancelar</a>' : '') . '</div></form></div></div>';
 echo '<div class="card"><div class="card-body"><table class="table table-striped dt w-100"><thead><tr><th>ID</th><th>Conta</th><th>Tipo</th><th>Receitas</th><th>Despesas</th><th>Transferências</th><th>Saldo</th><th>Ações</th></tr></thead><tbody>';
-$sql = "SELECT c.*, COALESCE(SUM(CASE WHEN l.tipo='receita' THEN l.valor_pago END),0) AS rec, COALESCE(SUM(CASE WHEN l.tipo='despesa' THEN l.valor_pago END),0) AS des, (SELECT COALESCE(SUM(valor),0) FROM transferencias WHERE destino_id=c.id) - (SELECT COALESCE(SUM(valor),0) FROM transferencias WHERE origem_id=c.id) AS transf FROM contas c LEFT JOIN lancamentos l ON l.conta_id=c.id GROUP BY c.id ORDER BY c.nome";
+$transfSql = transferencias_ok() ? '(SELECT COALESCE(SUM(valor),0) FROM transferencias WHERE destino_id=c.id) - (SELECT COALESCE(SUM(valor),0) FROM transferencias WHERE origem_id=c.id)' : '0';
+$sql = "SELECT c.*, COALESCE(SUM(CASE WHEN l.tipo='receita' THEN l.valor_pago END),0) AS rec, COALESCE(SUM(CASE WHEN l.tipo='despesa' THEN l.valor_pago END),0) AS des, $transfSql AS transf FROM contas c LEFT JOIN lancamentos l ON l.conta_id=c.id GROUP BY c.id ORDER BY c.nome";
 foreach ($pdo->query($sql) as $r) {
     $saldo = $r['saldo_inicial'] + $r['rec'] - $r['des'] + $r['transf'];
     echo '<tr><td>' . $r['id'] . '</td><td>' . h($r['nome']) . '</td><td>' . $tipos[$r['tipo']] . '</td><td class="text-success">' . brl($r['rec']) . '</td><td class="text-danger">' . brl($r['des']) . '</td><td class="' . ($r['transf'] < 0 ? 'text-danger' : 'text-success') . '">' . brl($r['transf']) . '</td><td class="fw-bold">' . brl($saldo) . '</td>'

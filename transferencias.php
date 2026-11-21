@@ -3,6 +3,13 @@ require 'app.php';
 require_login();
 $pdo = db();
 
+if (!transferencias_ok()) {
+    page_header('Transferências');
+    echo '<div class="alert alert-warning">O módulo de transferências está indisponível: a tabela <code>transferencias</code> não existe no banco. Execute o trecho correspondente de <code>schema.sql</code> no servidor.</div>';
+    page_footer();
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (($_POST['acao'] ?? '') === 'excluir') {
         $pdo->prepare('DELETE FROM transferencias WHERE id=?')->execute([(int)($_POST['id'] ?? 0)]);
