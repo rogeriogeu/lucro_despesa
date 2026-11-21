@@ -32,7 +32,7 @@ $pend = $pdo->query("SELECT COALESCE(SUM(CASE WHEN tipo='receita' THEN valor-val
 
 page_header('Dashboard');
 echo '<h4 class="mb-3">Dashboard</h4><div class="row g-3 mb-4">';
-foreach ([['Receitas (total)', $lanc['r'], 'success'], ['Despesas (total)', $lanc['d'], 'danger'], ['Resultado do mês', $mes['r'] - $mes['d'], $mes['r'] - $mes['d'] >= 0 ? 'success' : 'danger'], ['Saldo das contas', $inicial + $tot['r'] - $tot['d'], 'dark'], ['A receber (restante)', $pend['r'], 'success'], ['A pagar (restante)', $pend['d'], 'danger']] as [$t, $v, $c]) {
+foreach ([['Receitas (total)', $lanc['r'], 'success'], ['Despesas (total)', $lanc['d'], 'danger'], ['Resultado do mês', $mes['r'] - $mes['d'], $mes['r'] - $mes['d'] >= 0 ? 'success' : 'danger'], ['Saldo das contas', $lanc['r'] - $lanc['d'], 'dark'], ['A receber (restante)', $pend['r'], 'success'], ['A pagar (restante)', $pend['d'], 'danger']] as [$t, $v, $c]) {
     echo '<div class="col-6 col-md-3' . (strpos($t, 'restante') ? ' col-lg-3' : '') . '"><div class="card h-100"><div class="card-body"><div class="text-muted">' . $t . '</div><div class="fs-4 fw-bold text-nowrap text-' . $c . '">' . brl($v) . '</div></div></div></div>';
 }
 echo '</div>';
