@@ -7,35 +7,60 @@ $sit = in_array($_GET['sit'] ?? '', ['abertos', 'pagos', 'todos'], true) ? $_GET
 $ft = in_array($_GET['ftipo'] ?? '', ['receita', 'despesa'], true) ? $_GET['ftipo'] : '';
 $voltar = '?' . http_build_query(['sit' => $sit, 'ftipo' => $ft]);
 
+function filtro_lanc($sit, $ft) {
+    $w = []; $a = [];
+    if ($sit === 'abertos') $w[] = 'l.valor_pago < l.valor';
+    if ($sit === 'pagos') $w[] = 'l.valor_pago >= l.valor';
+    if ($ft) { $w[] = 'l.tipo=?'; $a[] = $ft; }
+    return [$w, $a];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = (int)($_POST['id'] ?? 0);
-    $voltar = '?' . http_build_query(['sit' => $_POST['sit'] ?? 'abertos', 'ftipo' => $_POST['ftipo'] ?? '']);
-    $st = $pdo->prepare('SELECT valor, valor_pago FROM lancamentos WHERE id=?');
-    $st->execute([$id]);
-    $l = $st->fetch();
-    if (!$l) { flash('Lançamento não encontrado.', 'warning'); redirect('pagamentos.php' . $voltar); }
+    $contaId = (int)($_POST['conta_id'] ?? 0);
+    $tipo = in_array($_POST['tipo'] ?? '', ['receita', 'despesa'], true) ? $_POST['tipo'] : '';
+    $psit = in_array($_POST['sit'] ?? '', ['abertos', 'pagos', 'todos'], true) ? $_POST['sit'] : 'abertos';
+    $pft = in_array($_POST['ftipo'] ?? '', ['receita', 'despesa'], true) ? $_POST['ftipo'] : '';
+    $voltar = '?' . http_build_query(['sit' => $psit, 'ftipo' => $pft]);
+    [$w, $a] = filtro_lanc($psit, $pft);
+    $w[] = 'l.conta_id=?'; $a[] = $contaId;
+    $w[] = 'l.tipo=?'; $a[] = $tipo;
+    $st = $pdo->prepare('SELECT l.id, l.valor, l.valor_pago FROM lancamentos l WHERE ' . implode(' AND ', $w) . ' ORDER BY l.data, l.id');
+    $st->execute($a);
+    $grupo = $st->fetchAll();
+    if (!$grupo) { flash('Lançamento não encontrado.', 'warning'); redirect('pagamentos.php' . $voltar); }
     if (($_POST['acao'] ?? '') === 'estornar') {
-        $pdo->prepare('UPDATE lancamentos SET valor_pago=0 WHERE id=?')->execute([$id]);
-        flash('Pagamento estornado: ' . brl($l['valor_pago']) . ' voltou para a conta.');
+        $pago = 0;
+        $up = $pdo->prepare('UPDATE lancamentos SET valor_pago=0 WHERE id=?');
+        foreach ($grupo as $l) { $pago += $l['valor_pago']; $up->execute([$l['id']]); }
+        flash('Pagamento estornado: ' . brl($pago) . ' voltou para a conta.');
         redirect('pagamentos.php' . $voltar);
     }
-    $resta = round($l['valor'] - $l['valor_pago'], 2);
+    $resta = 0;
+    foreach ($grupo as $l) $resta += max(0, round($l['valor'] - $l['valor_pago'], 2));
+    $resta = round($resta, 2);
     $pg = ($_POST['modo'] ?? '') === 'total' ? $resta : num($_POST['pagamento'] ?? 0);
     if ($pg <= 0) flash('Informe um valor válido.', 'warning');
     elseif ($pg > $resta + 0.001) flash('O valor excede o restante (' . brl($resta) . ').', 'warning');
     else {
-        $pdo->prepare('UPDATE lancamentos SET valor_pago=LEAST(valor, valor_pago+?) WHERE id=?')->execute([$pg, $id]);
+        $pdo->beginTransaction();
+        $up = $pdo->prepare('UPDATE lancamentos SET valor_pago=LEAST(valor, valor_pago+?) WHERE id=?');
+        $sobra = $pg;
+        foreach ($grupo as $l) {
+            $r1 = round($l['valor'] - $l['valor_pago'], 2);
+            if ($r1 <= 0) continue;
+            $x = min($r1, $sobra);
+            if ($x <= 0) break;
+            $up->execute([$x, $l['id']]);
+            $sobra = round($sobra - $x, 2);
+        }
+        $pdo->commit();
         $falta = round($resta - $pg, 2);
         flash('Registrado ' . brl($pg) . '.' . ($falta > 0 ? ' Restante: ' . brl($falta) . '.' : ' Quitado!'));
     }
     redirect('pagamentos.php' . $voltar);
 }
 
-$where = [];
-$args = [];
-if ($sit === 'abertos') $where[] = 'l.valor_pago < l.valor';
-if ($sit === 'pagos') $where[] = 'l.valor_pago >= l.valor';
-if ($ft) { $where[] = 'l.tipo=?'; $args[] = $ft; }
+[$where, $args] = filtro_lanc($sit, $ft);
 $st = $pdo->prepare('SELECT l.*, c.nome AS conta FROM lancamentos l JOIN contas c ON c.id=l.conta_id' . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY l.data, l.id');
 $st->execute($args);
 $rows = $st->fetchAll();
@@ -52,42 +77,60 @@ echo '</select></div><div class="col-md-4"><label class="form-label">Tipo</label
 echo '<div class="col-md-4"><button class="btn btn-primary">Filtrar</button></div></form></div></div>';
 
 echo '<div class="card"><div class="card-body"><table class="table table-striped dt w-100"><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Conta</th><th>Total</th><th>Pago</th><th>Restante</th><th>Situação</th><th>Ações</th></tr></thead><tbody>';
+$grupos = [];
 foreach ($rows as $r) {
+    $k = $r['conta_id'] . '|' . $r['tipo'];
+    if (!isset($grupos[$k])) $grupos[$k] = ['conta_id' => $r['conta_id'], 'tipo' => $r['tipo'], 'conta' => $r['conta'], 'data' => $r['data'], 'valor' => 0, 'pago' => 0, 'itens' => []];
+    $grupos[$k]['valor'] += $r['valor'];
+    $grupos[$k]['pago'] += $r['valor_pago'];
+    $grupos[$k]['itens'][] = $r['descricao'] . ' (' . brl($r['valor']) . ')';
+}
+foreach ($grupos as $r) {
     $rec = $r['tipo'] === 'receita';
-    $resta = round($r['valor'] - $r['valor_pago'], 2);
-    $badge = $resta <= 0 ? '<span class="badge text-bg-success">Quitado</span>' : ($r['valor_pago'] > 0 ? '<span class="badge text-bg-warning">Parcial</span>' : '<span class="badge text-bg-secondary">Pendente</span>');
-    $btn = $resta > 0 ? '<button type="button" class="btn btn-sm btn-danger btn-pagar" data-id="' . $r['id'] . '" data-resta="' . $resta . '" data-resta-fmt="' . h(brl($resta)) . '" data-desc="' . h($r['descricao']) . '" data-rec="' . (int)$rec . '">' . ($rec ? 'Receber' : 'Pagar') . '</button>' : '';
-    if ($r['valor_pago'] > 0) $btn .= ' <form method="post" class="d-inline" data-confirm="Estornar ' . h(brl($r['valor_pago'])) . '? O valor volta para a conta e o lançamento fica pendente.">' . csrf_field() . '<input type="hidden" name="acao" value="estornar"><input type="hidden" name="id" value="' . $r['id'] . '"><input type="hidden" name="sit" value="' . h($sit) . '"><input type="hidden" name="ftipo" value="' . h($ft) . '"><button class="btn btn-sm btn-outline-secondary">Estornar</button></form>';
+    $r['valor'] = round($r['valor'], 2);
+    $r['pago'] = round($r['pago'], 2);
+    $resta = round($r['valor'] - $r['pago'], 2);
+    $n = count($r['itens']);
+    $desc = $n > 1 ? $n . ' lançamentos' : explode(' (', $r['itens'][0])[0];
+    $det = '<div class="small text-muted text-wrap" style="white-space:normal">' . h(implode('; ', $r['itens'])) . '</div>';
+    $badge = $resta <= 0 ? '<span class="badge text-bg-success">Quitado</span>' : ($r['pago'] > 0 ? '<span class="badge text-bg-warning">Parcial</span>' : '<span class="badge text-bg-secondary">Pendente</span>');
+    $hid = '<input type="hidden" name="conta_id" value="' . (int)$r['conta_id'] . '"><input type="hidden" name="tipo" value="' . h($r['tipo']) . '"><input type="hidden" name="sit" value="' . h($sit) . '"><input type="hidden" name="ftipo" value="' . h($ft) . '">';
+    $btn = $resta > 0 ? '<button type="button" class="btn btn-sm btn-danger btn-pagar" data-conta="' . (int)$r['conta_id'] . '" data-tipo="' . h($r['tipo']) . '" data-resta="' . $resta . '" data-total-fmt="' . h(brl($r['valor'])) . '" data-resta-fmt="' . h(brl($resta)) . '" data-desc="' . h($r['conta'] . ' - ' . $desc) . '" data-rec="' . (int)$rec . '">' . ($rec ? 'Receber' : 'Pagar') . '</button>' : '';
+    if ($r['pago'] > 0) $btn .= ' <form method="post" class="d-inline" data-confirm="Estornar ' . h(brl($r['pago'])) . '? O valor volta para a conta e os lançamentos ficam pendentes.">' . csrf_field() . '<input type="hidden" name="acao" value="estornar">' . $hid . '<button class="btn btn-sm btn-outline-secondary">Estornar</button></form>';
     echo '<tr><td data-order="' . h($r['data']) . '">' . date('d/m/Y', strtotime($r['data'])) . '</td>'
         . '<td><span class="badge text-bg-' . ($rec ? 'success' : 'danger') . '">' . ($rec ? 'Receita' : 'Despesa') . '</span></td>'
-        . '<td>' . h($r['descricao']) . '</td><td>' . h($r['conta']) . '</td>'
-        . '<td data-order="' . $r['valor'] . '">' . brl($r['valor']) . '</td><td data-order="' . $r['valor_pago'] . '">' . brl($r['valor_pago']) . '</td>'
+        . '<td>' . h($desc) . ($n > 1 ? $det : '') . '</td><td>' . h($r['conta']) . '</td>'
+        . '<td data-order="' . $r['valor'] . '">' . brl($r['valor']) . '</td><td data-order="' . $r['pago'] . '">' . brl($r['pago']) . '</td>'
         . '<td data-order="' . $resta . '" class="fw-bold">' . brl($resta) . '</td><td>' . $badge . '</td><td class="text-nowrap">' . $btn . '</td></tr>';
 }
 echo '</tbody></table></div></div>';
 ?>
-<div class="modal fade" id="mpag" tabindex="-1"><div class="modal-dialog"><form method="post" class="modal-content">
+<div class="card position-fixed bottom-0 start-50 translate-middle-x mb-3 shadow d-none" id="selbar" style="z-index:1050;max-width:96vw"><form method="post" class="card-body d-flex flex-wrap gap-2 align-items-center">
 <?= csrf_field() ?>
-<input type="hidden" name="id" id="pid"><input type="hidden" name="sit" value="<?= h($sit) ?>"><input type="hidden" name="ftipo" value="<?= h($ft) ?>">
-<div class="modal-header"><h5 class="modal-title" id="ptitulo">Pagar</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-<div class="modal-body">
-<p class="mb-2" id="pdesc"></p>
-<div class="form-check"><input class="form-check-input" type="radio" name="modo" id="mt" value="total" checked><label class="form-check-label" for="mt">Valor total restante: <b id="ptotal"></b></label></div>
-<div class="form-check mb-2"><input class="form-check-input" type="radio" name="modo" id="mp" value="parcial"><label class="form-check-label" for="mp">Valor parcial (o restante fica para depois)</label></div>
-<input class="form-control" name="pagamento" id="pval" placeholder="Quanto foi pago? Ex.: 50,00" disabled>
-</div>
-<div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Confirmar</button></div>
-</form></div></div>
+<input type="hidden" name="conta_id" id="pconta"><input type="hidden" name="tipo" id="ptipo"><input type="hidden" name="sit" value="<?= h($sit) ?>"><input type="hidden" name="ftipo" value="<?= h($ft) ?>"><input type="hidden" name="modo" id="pmodo" value="total">
+<div><div class="fw-bold" id="pdesc"></div><small class="text-muted">Total: <span id="ptot"></span> &middot; Em aberto: <b id="ptotal"></b></small></div>
+<button class="btn btn-success" id="btot">Pagar total</button>
+<button type="button" class="btn btn-warning" id="bpar">Pagar parcial</button>
+<input class="form-control w-auto d-none" name="pagamento" id="pval" placeholder="Valor pago. Ex.: 50,00" inputmode="decimal" disabled>
+<button class="btn btn-primary d-none" id="bok">Confirmar</button>
+<button type="button" class="btn btn-outline-secondary" id="bcan">Cancelar</button>
+</form></div>
 <script>
 document.addEventListener("DOMContentLoaded",function(){
-var m=new bootstrap.Modal(document.getElementById("mpag")),v=document.getElementById("pval");
-function modo(){var p=document.getElementById("mp").checked;v.disabled=!p;v.required=p;if(p)v.focus();}
-document.getElementById("mt").onchange=modo;document.getElementById("mp").onchange=modo;
-document.addEventListener("click",function(e){var b=e.target.closest(".btn-pagar");if(!b)return;
-document.getElementById("pid").value=b.dataset.id;
-document.getElementById("ptitulo").textContent=b.textContent;
+var bar=document.getElementById("selbar"),v=document.getElementById("pval"),bok=document.getElementById("bok"),sel=null;
+function reset(){v.classList.add("d-none");v.disabled=true;v.required=false;v.value="";bok.classList.add("d-none");document.getElementById("pmodo").value="total";}
+function fechar(){if(sel)sel.classList.remove("table-active");sel=null;bar.classList.add("d-none");reset();}
+document.addEventListener("click",function(e){
+var tr=e.target.closest("table.dt tbody tr");if(!tr||e.target.closest("form,a,button:not(.btn-pagar)"))return;
+var b=tr.querySelector(".btn-pagar");if(!b)return;
+if(sel)sel.classList.remove("table-active");sel=tr;tr.classList.add("table-active");reset();
+document.getElementById("pconta").value=b.dataset.conta;document.getElementById("ptipo").value=b.dataset.tipo;
 document.getElementById("pdesc").textContent=b.dataset.desc;
+document.getElementById("ptot").textContent=b.dataset.totalFmt;
 document.getElementById("ptotal").textContent=b.dataset.restaFmt;
-document.getElementById("mt").checked=true;v.value="";modo();m.show();});});
-</script>
-<?php page_footer();
+v.dataset.max=b.dataset.resta;bar.classList.remove("d-none");});
+document.getElementById("bpar").onclick=function(){document.getElementById("pmodo").value="parcial";v.classList.remove("d-none");v.disabled=false;v.required=true;bok.classList.remove("d-none");v.focus();};
+document.getElementById("btot").onclick=function(){document.getElementById("pmodo").value="total";v.required=false;v.disabled=true;};
+document.getElementById("bcan").onclick=fechar;
+});
+</script><?php page_footer();
