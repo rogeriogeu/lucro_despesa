@@ -91,15 +91,14 @@ foreach ($grupos as $r) {
     $r['pago'] = round($r['pago'], 2);
     $resta = round($r['valor'] - $r['pago'], 2);
     $n = count($r['itens']);
-    $desc = $n > 1 ? $n . ' lançamentos' : explode(' (', $r['itens'][0])[0];
-    $det = '<div class="small text-muted text-wrap" style="white-space:normal">' . h(implode('; ', $r['itens'])) . '</div>';
+    $desc = $n . ($n > 1 ? ' lançamentos' : ' lançamento');
     $badge = $resta <= 0 ? '<span class="badge text-bg-success">Quitado</span>' : ($r['pago'] > 0 ? '<span class="badge text-bg-warning">Parcial</span>' : '<span class="badge text-bg-secondary">Pendente</span>');
     $hid = '<input type="hidden" name="conta_id" value="' . (int)$r['conta_id'] . '"><input type="hidden" name="tipo" value="' . h($r['tipo']) . '"><input type="hidden" name="sit" value="' . h($sit) . '"><input type="hidden" name="ftipo" value="' . h($ft) . '">';
     $btn = $resta > 0 ? '<button type="button" class="btn btn-sm btn-danger btn-pagar" data-conta="' . (int)$r['conta_id'] . '" data-tipo="' . h($r['tipo']) . '" data-resta="' . $resta . '" data-total-fmt="' . h(brl($r['valor'])) . '" data-resta-fmt="' . h(brl($resta)) . '" data-desc="' . h($r['conta'] . ' - ' . $desc) . '" data-rec="' . (int)$rec . '">' . ($rec ? 'Receber' : 'Pagar') . '</button>' : '';
     if ($r['pago'] > 0) $btn .= ' <form method="post" class="d-inline" data-confirm="Estornar ' . h(brl($r['pago'])) . '? O valor volta para a conta e os lançamentos ficam pendentes.">' . csrf_field() . '<input type="hidden" name="acao" value="estornar">' . $hid . '<button class="btn btn-sm btn-outline-secondary">Estornar</button></form>';
     echo '<tr><td data-order="' . h($r['data']) . '">' . date('d/m/Y', strtotime($r['data'])) . '</td>'
         . '<td><span class="badge text-bg-' . ($rec ? 'success' : 'danger') . '">' . ($rec ? 'Receita' : 'Despesa') . '</span></td>'
-        . '<td>' . h($desc) . ($n > 1 ? $det : '') . '</td><td>' . h($r['conta']) . '</td>'
+        . '<td>' . h($desc) . '</td><td>' . h($r['conta']) . '</td>'
         . '<td data-order="' . $r['valor'] . '">' . brl($r['valor']) . '</td><td data-order="' . $r['pago'] . '">' . brl($r['pago']) . '</td>'
         . '<td data-order="' . $resta . '" class="fw-bold">' . brl($resta) . '</td><td>' . $badge . '</td><td class="text-nowrap">' . $btn . '</td></tr>';
 }
