@@ -80,17 +80,17 @@ echo '<div class="card"><div class="card-body"><table class="table table-striped
 $grupos = [];
 foreach ($rows as $r) {
     $k = $r['conta_id'] . '|' . $r['tipo'];
-    if (!isset($grupos[$k])) $grupos[$k] = ['conta_id' => $r['conta_id'], 'tipo' => $r['tipo'], 'conta' => $r['conta'], 'data' => $r['data'], 'valor' => 0, 'pago' => 0, 'itens' => []];
+    if (!isset($grupos[$k])) $grupos[$k] = ['conta_id' => $r['conta_id'], 'tipo' => $r['tipo'], 'conta' => $r['conta'], 'data' => $r['data'], 'valor' => 0, 'pago' => 0, 'n' => 0];
     $grupos[$k]['valor'] += $r['valor'];
     $grupos[$k]['pago'] += $r['valor_pago'];
-    $grupos[$k]['itens'][] = $r['descricao'] . ' (' . brl($r['valor']) . ')';
+    $grupos[$k]['n']++;
 }
 foreach ($grupos as $r) {
     $rec = $r['tipo'] === 'receita';
     $r['valor'] = round($r['valor'], 2);
     $r['pago'] = round($r['pago'], 2);
     $resta = round($r['valor'] - $r['pago'], 2);
-    $n = count($r['itens']);
+    $n = $r['n'];
     $desc = $n . ($n > 1 ? ' lançamentos' : ' lançamento');
     $badge = $resta <= 0 ? '<span class="badge text-bg-success">Quitado</span>' : ($r['pago'] > 0 ? '<span class="badge text-bg-warning">Parcial</span>' : '<span class="badge text-bg-secondary">Pendente</span>');
     $hid = '<input type="hidden" name="conta_id" value="' . (int)$r['conta_id'] . '"><input type="hidden" name="tipo" value="' . h($r['tipo']) . '"><input type="hidden" name="sit" value="' . h($sit) . '"><input type="hidden" name="ftipo" value="' . h($ft) . '">';
