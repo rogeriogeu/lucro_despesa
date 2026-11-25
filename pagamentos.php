@@ -5,13 +5,15 @@ $pdo = db();
 
 $sit = in_array($_GET['sit'] ?? '', ['abertos', 'pagos', 'todos'], true) ? $_GET['sit'] : 'abertos';
 $ft = in_array($_GET['ftipo'] ?? '', ['receita', 'despesa'], true) ? $_GET['ftipo'] : '';
-$voltar = '?' . http_build_query(['sit' => $sit, 'ftipo' => $ft]);
+$fc = max(0, (int)($_GET['fconta'] ?? 0));
+$voltar = '?' . http_build_query(['sit' => $sit, 'ftipo' => $ft, 'fconta' => $fc]);
 
-function filtro_lanc($sit, $ft) {
+function filtro_lanc($sit, $ft, $fc = 0) {
     $w = []; $a = [];
     if ($sit === 'abertos') $w[] = 'l.valor_pago < l.valor';
     if ($sit === 'pagos') $w[] = 'l.valor_pago >= l.valor';
     if ($ft) { $w[] = 'l.tipo=?'; $a[] = $ft; }
+    if ($fc) { $w[] = 'l.conta_id=?'; $a[] = $fc; }
     return [$w, $a];
 }
 
@@ -20,8 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tipo = in_array($_POST['tipo'] ?? '', ['receita', 'despesa'], true) ? $_POST['tipo'] : '';
     $psit = in_array($_POST['sit'] ?? '', ['abertos', 'pagos', 'todos'], true) ? $_POST['sit'] : 'abertos';
     $pft = in_array($_POST['ftipo'] ?? '', ['receita', 'despesa'], true) ? $_POST['ftipo'] : '';
-    $voltar = '?' . http_build_query(['sit' => $psit, 'ftipo' => $pft]);
-    [$w, $a] = filtro_lanc($psit, $pft);
+    $pfc = max(0, (int)($_POST['fconta'] ?? 0));
+    $voltar = '?' . http_build_query(['sit' => $psit, 'ftipo' => $pft, 'fconta' => $pfc]);
+    [$w, $a] = filtro_lanc($psit, $pft, $pfc);
     $w[] = 'l.conta_id=?'; $a[] = $contaId;
     $w[] = 'l.tipo=?'; $a[] = $tipo;
     $st = $pdo->prepare('SELECT l.id, l.valor, l.valor_pago FROM lancamentos l WHERE ' . implode(' AND ', $w) . ' ORDER BY l.data, l.id');
@@ -60,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('pagamentos.php' . $voltar);
 }
 
-[$where, $args] = filtro_lanc($sit, $ft);
+[$where, $args] = filtro_lanc($sit, $ft, $fc);
 $st = $pdo->prepare('SELECT l.*, c.nome AS conta FROM lancamentos l JOIN contas c ON c.id=l.conta_id' . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY l.data, l.id');
 $st->execute($args);
 $rows = $st->fetchAll();
@@ -71,10 +74,14 @@ page_header('Pagamentos e Recebimentos');
 echo '<h4 class="mb-3">Pagamentos e Recebimentos</h4>';
 echo '<div class="row g-3 mb-3"><div class="col-6"><div class="card h-100"><div class="card-body"><div class="text-muted">A receber (restante)</div><div class="fs-4 fw-bold text-success text-nowrap">' . brl($totR) . '</div></div></div></div>'
     . '<div class="col-6"><div class="card h-100"><div class="card-body"><div class="text-muted">A pagar (restante)</div><div class="fs-4 fw-bold text-danger text-nowrap">' . brl($totD) . '</div></div></div></div></div>';
-echo '<div class="card mb-3"><div class="card-body"><form method="get" class="row g-2 align-items-end"><div class="col-md-4"><label class="form-label">Situação</label><select class="form-select" name="sit">';
+echo '<div class="card mb-3"><div class="card-body"><form method="get" class="row g-2 align-items-end"><div class="col-md-3"><label class="form-label">Situação</label><select class="form-select" name="sit">';
 foreach (['abertos' => 'Pendentes e parciais', 'pagos' => 'Quitados', 'todos' => 'Todos'] as $k => $v) echo '<option value="' . $k . '"' . ($sit === $k ? ' selected' : '') . '>' . $v . '</option>';
-echo '</select></div><div class="col-md-4"><label class="form-label">Tipo</label><select class="form-select" name="ftipo"><option value="">Receitas e despesas</option><option value="receita"' . ($ft === 'receita' ? ' selected' : '') . '>Receitas</option><option value="despesa"' . ($ft === 'despesa' ? ' selected' : '') . '>Despesas</option></select></div>';
-echo '<div class="col-md-4"><button class="btn btn-primary">Filtrar</button></div></form></div></div>';
+echo '</select></div><div class="col-md-3"><label class="form-label">Tipo</label><select class="form-select" name="ftipo"><option value="">Receitas e despesas</option><option value="receita"' . ($ft === 'receita' ? ' selected' : '') . '>Receitas</option><option value="despesa"' . ($ft === 'despesa' ? ' selected' : '') . '>Despesas</option></select></div>';
+$contas = $pdo->query('SELECT id, nome FROM contas ORDER BY nome')->fetchAll();
+echo '<div class="col-md-3"><label class="form-label">Conta</label><select class="form-select" name="fconta"><option value="0">Todas as contas</option>';
+foreach ($contas as $ct) echo '<option value="' . (int)$ct['id'] . '"' . ($fc === (int)$ct['id'] ? ' selected' : '') . '>' . h($ct['nome']) . '</option>';
+echo '</select></div>';
+echo '<div class="col-md-3"><button class="btn btn-primary">Filtrar</button></div></form></div></div>';
 
 echo '<div class="card"><div class="card-body"><table class="table table-striped dt w-100"><thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Conta</th><th>Total</th><th>Pago</th><th>Restante</th><th>Situação</th><th>Ações</th></tr></thead><tbody>';
 $grupos = [];
@@ -93,7 +100,7 @@ foreach ($grupos as $r) {
     $n = $r['n'];
     $desc = $n . ($n > 1 ? ' lançamentos' : ' lançamento');
     $badge = $resta <= 0 ? '<span class="badge text-bg-success">Quitado</span>' : ($r['pago'] > 0 ? '<span class="badge text-bg-warning">Parcial</span>' : '<span class="badge text-bg-secondary">Pendente</span>');
-    $hid = '<input type="hidden" name="conta_id" value="' . (int)$r['conta_id'] . '"><input type="hidden" name="tipo" value="' . h($r['tipo']) . '"><input type="hidden" name="sit" value="' . h($sit) . '"><input type="hidden" name="ftipo" value="' . h($ft) . '">';
+    $hid = '<input type="hidden" name="conta_id" value="' . (int)$r['conta_id'] . '"><input type="hidden" name="tipo" value="' . h($r['tipo']) . '"><input type="hidden" name="sit" value="' . h($sit) . '"><input type="hidden" name="ftipo" value="' . h($ft) . '"><input type="hidden" name="fconta" value="' . $fc . '">';
     $btn = $resta > 0 ? '<button type="button" class="btn btn-sm btn-danger btn-pagar" data-conta="' . (int)$r['conta_id'] . '" data-tipo="' . h($r['tipo']) . '" data-resta="' . $resta . '" data-total-fmt="' . h(brl($r['valor'])) . '" data-resta-fmt="' . h(brl($resta)) . '" data-desc="' . h($r['conta'] . ' - ' . $desc) . '" data-rec="' . (int)$rec . '">' . ($rec ? 'Receber' : 'Pagar') . '</button>' : '';
     if ($r['pago'] > 0) $btn .= ' <form method="post" class="d-inline" data-confirm="Estornar ' . h(brl($r['pago'])) . '? O valor volta para a conta e os lançamentos ficam pendentes.">' . csrf_field() . '<input type="hidden" name="acao" value="estornar">' . $hid . '<button class="btn btn-sm btn-outline-secondary">Estornar</button></form>';
     echo '<tr><td data-order="' . h($r['data']) . '">' . date('d/m/Y', strtotime($r['data'])) . '</td>'
@@ -106,7 +113,7 @@ echo '</tbody></table></div></div>';
 ?>
 <div class="card position-fixed bottom-0 start-50 translate-middle-x mb-3 shadow d-none" id="selbar" style="z-index:1050;max-width:96vw"><form method="post" class="card-body d-flex flex-wrap gap-2 align-items-center">
 <?= csrf_field() ?>
-<input type="hidden" name="conta_id" id="pconta"><input type="hidden" name="tipo" id="ptipo"><input type="hidden" name="sit" value="<?= h($sit) ?>"><input type="hidden" name="ftipo" value="<?= h($ft) ?>"><input type="hidden" name="modo" id="pmodo" value="total">
+<input type="hidden" name="conta_id" id="pconta"><input type="hidden" name="tipo" id="ptipo"><input type="hidden" name="sit" value="<?= h($sit) ?>"><input type="hidden" name="ftipo" value="<?= h($ft) ?>"><input type="hidden" name="fconta" value="<?= $fc ?>"><input type="hidden" name="modo" id="pmodo" value="total">
 <div><div class="fw-bold" id="pdesc"></div><small class="text-muted">Total: <span id="ptot"></span> &middot; Em aberto: <b id="ptotal"></b></small></div>
 <button class="btn btn-success" id="btot">Pagar total</button>
 <button type="button" class="btn btn-warning" id="bpar">Pagar parcial</button>
